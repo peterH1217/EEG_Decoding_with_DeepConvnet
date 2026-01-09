@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import os
-from src import config
+import config
 
 def plot_power_spectrum(raw: mne.io.Raw, title="Power Spectrum Density (PSD)"):
     """

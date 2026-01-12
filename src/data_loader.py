@@ -2,55 +2,57 @@
 import logging
 import ssl
 import mne
-from moabb.datasets import BNCI2014_001
+from moabb.datasets import BNCI2014_001, Schirrmeister2017
 from src import config
 
 logger = logging.getLogger(__name__)
 
-# --- MAC FIX: IGNORE SSL ERRORS ---
+# Mac Fix: Ignoring SSL Errors
 try:
     ssl._create_default_https_context = ssl._create_unverified_context
 except AttributeError:
     pass
 
-def get_dataset(subject_id: int):
+def get_dataset(subject_id: int, dataset_name):
     """
-    Downloads and loads data for a specific subject.
-    Dynamically finds session and run names to avoid KeyErrors.
+    Downloads and loads data for a specific subject from the specified dataset.
+    Supported datasets: 'BNCI2014_001' (BCI IV 2a) and 'Schirrmeister2017' (High Gamma).
     """
-    logger.info(f"Step 1: Loading data for Subject {subject_id} via MOABB...")
-    
-    ds = BNCI2014_001()
+    logger.info(f"Step 1: Loading Subject {subject_id} from {dataset_name}...")
+
+    # Dataset Switch
+    if dataset_name == 'BNCI2014_001':
+        ds = BNCI2014_001()
+    elif dataset_name == 'Schirrmeister2017':
+        ds = Schirrmeister2017()
+    else:
+        raise ValueError(f"Dataset '{dataset_name}' not supported.")
+
     ds.subject_list = [subject_id]
     
-    # Download data
+    # Downloading data (Note to self: MOABB handles the caching automatically)
     data = ds.get_data()
     
-    # --- DYNAMIC LOOKUP (The Fix) ---
-    # We don't guess '0train' or 'run_0'. We look at what is actually there.
+    # DYNAMIC LOOKUP: works for both datasets because we look at the keys dynamically
     subject_data = data[subject_id]
+    session_names = list(subject_data.keys())
     
-    # 1. Find the Training Session name (usually '0train' or 'session_T')
-    train_session_name = list(subject_data.keys())[0] 
-    # 2. Find the Test Session name (usually '1test' or 'session_E')
-    test_session_name = list(subject_data.keys())[1]
-    
+    # The first session is Training, second is Test (or Evaluation)
+    train_session_name = session_names[0]
+    # Handling rare cases where a dataset might only have one session listed
+    test_session_name = session_names[1] if len(session_names) > 1 else session_names[0]
+
     logger.info(f"DEBUG: Found sessions: {train_session_name}, {test_session_name}")
 
-    # 3. Get the run data (The 'KeyError' Fix)
-    # We grab the first run available in the session, whatever it is named.
+    # Extract runs (Training)
     runs_train = subject_data[train_session_name]
-    run_train_name = list(runs_train.keys())[0] # e.g. 'run_0'
+    run_train_name = list(runs_train.keys())[0]
     
+    # Extract runs (Test)
     runs_test = subject_data[test_session_name]
     run_test_name = list(runs_test.keys())[0]
-    
-    logger.info(f"DEBUG: Found runs: {run_train_name}, {run_test_name}")
-    
-    raw_train = runs_train[run_train_name]
-    raw_test = runs_test[run_test_name]
-    
-    return raw_train, raw_test
+
+    return runs_train[run_train_name], runs_test[run_test_name]
 
 def preprocess_data(raw: mne.io.Raw):
     """
@@ -75,13 +77,18 @@ def preprocess_data(raw: mne.io.Raw):
     
     return raw
 
-def load_and_process_subject(subject_id: int):
+def load_and_process_subject(subject_id: int, dataset_name):
     """
-    Master function.
+    Master function to load and process data.
     """
-    raw_train, raw_test = get_dataset(subject_id)
+    # Pass the dataset_name to the get_dataset function
+    raw_train, raw_test = get_dataset(subject_id, dataset_name)
+    
+    # Preprocessing (Filtering/Normalization) is the same for both!
     raw_train = preprocess_data(raw_train)
     raw_test = preprocess_data(raw_test)
     
-    logger.info(f"Successfully processed Subject {subject_id}")
+    logger.info(f"Successfully processed Subject {subject_id} from {dataset_name}")
     return raw_train, raw_test
+
+

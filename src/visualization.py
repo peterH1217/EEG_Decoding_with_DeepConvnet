@@ -1,13 +1,10 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-<<<<<<< HEAD
 import mne
 import logging
-=======
 import os
-import config
->>>>>>> b78109f22b61b7ab4612db3774193e5e0077d1df
+from src import config
 
 # Configure logging
 logger = logging.getLogger(__name__)

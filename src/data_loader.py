@@ -4,7 +4,6 @@ import ssl
 import mne
 from moabb.datasets import BNCI2014_001, Schirrmeister2017
 from src import config
-import config
 import numpy as np
 
 
@@ -92,10 +91,6 @@ def load_and_process_subject(subject_id: int, dataset_name):
     raw_test = preprocess_data(raw_test)
     
     logger.info(f"Successfully processed Subject {subject_id} from {dataset_name}")
-    return raw_train, raw_test
-
-
-    logger.info(f"Successfully processed Subject {subject_id}")
     return raw_train, raw_test
 
 

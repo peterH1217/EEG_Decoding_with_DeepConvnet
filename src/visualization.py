@@ -4,7 +4,7 @@ import numpy as np
 import mne
 import logging
 import os
-from src import config
+import config
 
 # Configure logging
 logger = logging.getLogger(__name__)

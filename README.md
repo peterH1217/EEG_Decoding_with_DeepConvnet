@@ -24,14 +24,11 @@ To download the dataset (automatically handled via MOABB), filter, normalize, an
 ```bash
 python -m src.test_run
 ```
-Note: The first run will take a few minutes to download the BCI IV-2a dataset (~85MB per subject).
-
-Output: Check the results/ folder for PSD plots and raw EEG traces.
 
 ### 3. Project structure:
-**src/data_loader.py:** Handles downloading (MOABB), 4-38Hz filtering, and Z-score normalization.
+**src/data_loader.py:** **Dynamic Loading:** Automatically switches between BCI 2a (22 channels) and HGD (128 channels). **Preprocessing:** Applies 4Hz High-pass filtering (preserving Gamma band up to 125Hz) and channel-wise Z-score normalization. **Segmentation:** Implements the Cropped Training logic (sliding windows) resulting in ~625 crops per trial.
 
-**src/visualization.py:** Generates PSD (Power Spectral Density) and raw signal plots.
+**src/visualization.py:** Generates PSD (Power Spectral Density) plots to verify filtering. Plots Raw EEG Traces to verify normalization and signal quality. Saves outputs dynamically to results/ (e.g., psd_plot_Schirrmeister2017.png).
 
 **src/config.py:** Central configuration (Sampling Rate, Channel Names, Filter settings) that can be adjusted to one's liking. 
 

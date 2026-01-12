@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuro_deep_learning"
+version = "0.1.0"
+description = "Reproduction of Schirrmeister et al. (2017) Deep ConvNet for EEG"
+authors = [
+    {name = "Peter"},
+    {name = "Margaret"},
+    {name = "Helen"}
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "mne",
+    "moabb",
+    "torch",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn"
+]

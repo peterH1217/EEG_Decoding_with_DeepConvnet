@@ -4,6 +4,9 @@ import ssl
 import mne
 from moabb.datasets import BNCI2014_001, Schirrmeister2017
 from src import config
+import config
+import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,3 +95,63 @@ def load_and_process_subject(subject_id: int, dataset_name):
     return raw_train, raw_test
 
 
+    logger.info(f"Successfully processed Subject {subject_id}")
+    return raw_train, raw_test
+
+
+def make_epochs(raw: mne.io.Raw):
+    """
+    Create trials (epochs) following Schirrmeister et al. (2017).
+    Epochs cover [-0.5, +4.0] seconds relative to trial start.
+    """
+    events, event_id = mne.events_from_annotations(raw, verbose=False)
+    picks = mne.pick_types(raw.info, eeg=True)
+
+    epochs = mne.Epochs(
+        raw,
+        events,
+        event_id=event_id,
+        tmin=-0.5,
+        tmax=4.0,
+        picks=picks,
+        baseline=None,
+        preload=True,
+        verbose=False,
+    )
+
+    X = epochs.get_data()          # (trials, channels, time)
+    y = epochs.events[:, 2]        # event codes
+    return X, y
+
+
+def crop_trials_schirrmeister(X, y):
+    """
+    Cropped training exactly following Schirrmeister et al. (2017):
+    - sampling rate: config.SAMPLING_RATE (250 Hz)
+    - crop length: 2 s (500 samples)
+    - step: 1 sample (0.004 s)
+    - first crop starts at -0.5 s
+    - last crop ends at +4.0 s
+    - 625 crops per trial
+    """
+    sfreq = config.SAMPLING_RATE
+    crop_size = int(2.0 * sfreq)   # 500 samples
+    X_crops = []
+    y_crops = []
+
+    for trial_idx in range(len(X)):
+        trial = X[trial_idx]       # (channels, time)
+        label = y[trial_idx]
+
+        # trial length should be ~1125 samples at 250 Hz
+        T = trial.shape[-1]
+
+        # enforce 625 crops (paper)
+        last_start = 624            # 0..624 -> 625 crops
+
+        for start in range(0, last_start + 1):
+            crop = trial[:, start:start + crop_size]
+            X_crops.append(crop)
+            y_crops.append(label)
+
+    return np.asarray(X_crops), np.asarray(y_crops)

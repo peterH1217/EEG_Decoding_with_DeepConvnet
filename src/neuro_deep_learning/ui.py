@@ -1,10 +1,8 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import mne
 import logging
-import os
-import config
+# import neuro_deep_learning.config as config  <-- Removed (unused)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -14,12 +12,20 @@ def plot_psd(raw, save_path="results/psd_plot.png"):
     Plots the Power Spectral Density (PSD) of the raw data.
     """
     logger.info("Plotting power spectral density (dB=True).")
+    
+    # Critical for servers/scripts: Use non-interactive backend
+    current_backend = plt.get_backend()
+    plt.switch_backend('Agg') 
+    
     fig = raw.compute_psd(fmax=50).plot(show=False)
     
     # Save the figure
     fig.savefig(save_path)
     logger.info(f"Saved PSD plot to {save_path}")
     plt.close(fig)
+    
+    # Restore backend (optional)
+    plt.switch_backend(current_backend)
 
 def plot_raw_trace(raw, save_path="results/raw_eeg_trace.png", duration=5, start_time=0):
     """
@@ -27,8 +33,9 @@ def plot_raw_trace(raw, save_path="results/raw_eeg_trace.png", duration=5, start
     """
     logger.info(f"Plotting first {duration} seconds of raw EEG...")
     
+    plt.switch_backend('Agg') # Ensure no window pops up
+    
     # Select specific motor cortex channels to make the plot readable
-    # (We wrap in try/except in case channel names differ slightly between datasets)
     possible_channels = ['C3', 'Cz', 'C4']
     channels_to_plot = [ch for ch in possible_channels if ch in raw.ch_names]
     

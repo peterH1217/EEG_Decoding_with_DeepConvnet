@@ -1,65 +1,99 @@
 # src/test_run.py
 import logging
 import sys
-from src import data_loader, visualization  # Clean imports
+from pathlib import Path
 
-# Configuring logging
+from torch.utils.data import DataLoader
+import data_loader, visualization  # IMPORTANT: package import
+
+# ---------------- Logging configuration ----------------
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
+# ---------------- Project paths ----------------
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = ROOT / "results"
+RESULTS_DIR.mkdir(exist_ok=True)
+
 def main():
     logger.info(">>> STEP 1: Starting Multi-Dataset Pipeline...")
-    
-    # 1. Defining Datasets
-    # 'BNCI2014_001' = BCI Competition IV 2a
-    # 'Schirrmeister2017' = High Gamma Dataset (HGD)
-    datasets_to_run = ['BNCI2014_001', 'Schirrmeister2017']
-    
+
+    datasets_to_run = ["BNCI2014_001", "Schirrmeister2017"]
+
     for dataset_name in datasets_to_run:
         logger.info(f"\n--- PROCESSING DATASET: {dataset_name} ---")
-        
+
         try:
-            # Helen's Part (Preprocessing & Visualization):
-            
-            # 2. Load Data (Dynamic Switch)
-            # We pass the dataset_name to tell the loader which one to grab
-            raw_train, raw_test = data_loader.load_and_process_subject(1, dataset_name=dataset_name)
-
-            # 3. Generate Visualizations
-            logger.info(f"Generating visualizations for {dataset_name}...")
-            
-            visualization.plot_psd(
-                raw_train, 
-                save_path=f"results/psd_plot_{dataset_name}.png"
-            )
-            
-            visualization.plot_raw_trace(
-                raw_train, 
-                save_path=f"results/raw_eeg_trace_{dataset_name}.png"
+            # 1) Load + preprocess (MOABB auto-downloads & caches)
+            raw_train, raw_test = data_loader.load_and_process_subject(
+                subject_id=1,
+                dataset_name=dataset_name,
             )
 
-            # Peter's part (Epoching & Cropping) -- adding this to the logic
+            # 2) Save visualizations (absolute paths)
+            visualization.plot_psd(raw_train, save_path=RESULTS_DIR / f"psd_plot_{dataset_name}.png")
+            visualization.plot_raw_trace(raw_train, save_path=RESULTS_DIR / f"raw_eeg_trace_{dataset_name}.png")
 
-            logger.info(f"Step 3: Making epochs (trials) for {dataset_name}...")
-            X_train, y_train = data_loader.make_epochs(raw_train)
-            X_test, y_test   = data_loader.make_epochs(raw_test)
+            # 3) Epoching (dataset-specific)
+            if dataset_name == "BNCI2014_001":
+                X_train, y_train = data_loader.make_epochs_bci(raw_train, tmin=0.0, tmax=4.0)
+                X_test,  y_test  = data_loader.make_epochs_bci(raw_test,  tmin=0.0, tmax=4.0)
+            else:
+                X_train, y_train = data_loader.make_epochs_hgd(raw_train, tmin=0.0, tmax=4.0)
+                X_test,  y_test  = data_loader.make_epochs_hgd(raw_test,  tmin=0.0, tmax=4.0)
 
+            print(f"[DEBUG] {dataset_name} epochs train: {X_train.shape}, y: {y_train.shape}")
 
-            logger.info(f"Step 4: Cropped training (Schirrmeister logic)...")
-            X_train_crops, y_train_crops = data_loader.crop_trials_schirrmeister(X_train, y_train)
+            # 4) Minimal artifact removal (±800 µV) BEFORE z-scoring
+            X_train, y_train, keep_tr = data_loader.remove_artifact_trials_uV(X_train, y_train, threshold_uV=800.0)
+            X_test,  y_test,  keep_te = data_loader.remove_artifact_trials_uV(X_test,  y_test,  threshold_uV=800.0)
 
-            # Verifying Shapes
+            print(f"[DEBUG] {dataset_name} after artifact train trials: {X_train.shape[0]}")
+
+            if X_train.shape[0] == 0:
+                logger.error(f"{dataset_name}: 0 trials left after artifact removal; skipping.")
+                continue
+
+            # 5) Normalize for CNN (z-score per trial per channel)
+            X_train = data_loader.zscore_per_channel(X_train)
+            X_test  = data_loader.zscore_per_channel(X_test)
+
+            # 6) Memory-safe cropped training dataset (on-the-fly)
+            trial_len = X_train.shape[-1]
+            crop_size = min(500, trial_len)  # never exceed trial length
+            stride = 1
+
+            train_ds = data_loader.make_crops_dataset_for_cnn(X_train, y_train, crop_size=crop_size, stride=stride)
+
+            print(f"[DEBUG] {dataset_name} crop_size={crop_size}, total_crops={len(train_ds)}")
+
+            if len(train_ds) == 0:
+                logger.error(f"{dataset_name}: 0 crops produced; skipping.")
+                continue
+
+            # Windows tip: start with num_workers=0, then increase if stable
+            train_loader = DataLoader(
+                train_ds,
+                batch_size=64,
+                shuffle=True,
+                num_workers=0,
+                pin_memory=False,
+            )
+
+            xb, yb = next(iter(train_loader))
             print(f"\n--- SHAPES for {dataset_name} ---")
-            print(f"Original Trials : {X_train.shape}")       # (n_trials, channels, time)
-            print(f"Cropped Trials  : {X_train_crops.shape}") # (n_trials * 625, channels, crop_size)
-            print(f"-----------------------------------\n")
+            print("Epochs shape:", X_train.shape)
+            print("One batch crops (CNN input):", xb.shape)
+            print("Batch labels:", yb.shape)
+            print("Total number of crops:", len(train_ds))
+            print("-----------------------------------\n")
 
-            logger.info(f"Successfully finished {dataset_name}. Check results folder!")
+            logger.info(f"Finished {dataset_name} successfully.")
 
         except Exception as e:
             logger.exception(f"Failed to process {dataset_name}: {e}")
 
-    logger.info("\n>>> Pipeline complete: processed and cropped both datasets.")
+    logger.info(">>> Pipeline complete.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

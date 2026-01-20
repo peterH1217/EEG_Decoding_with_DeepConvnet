@@ -3,9 +3,7 @@ import sys
 import argparse
 from pathlib import Path
 from torch.utils.data import DataLoader
-
-# --- IMPORTS ---
-from neuro_deep_learning import fetch, dataset, ui
+from neuro_deep_learning import fetch, dataset, visualization
 
 # ---------------- Logging configuration ----------------
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -31,8 +29,8 @@ def process_dataset(dataset_name: str) -> None:
     raw_test = dataset.preprocess_data(raw_test)
 
     # 3. Visualize
-    ui.plot_psd(raw_train, save_path=RESULTS_DIR / f"psd_plot_{dataset_name}.png")
-    ui.plot_raw_trace(raw_train, save_path=RESULTS_DIR / f"raw_eeg_trace_{dataset_name}.png")
+    visualization.plot_psd(raw_train, save_path=RESULTS_DIR / f"psd_plot_{dataset_name}.png")
+    visualization.plot_raw_trace(raw_train, save_path=RESULTS_DIR / f"raw_eeg_trace_{dataset_name}.png")
 
     # 4. Epochs (Smart)
     X_train, y_train = dataset.make_epochs(raw_train, tmin=0.0, tmax=4.0)

@@ -127,4 +127,5 @@ class CropsDataset(Dataset):
         x_crop = self.X[trial_idx, :, start:end]
         y_label = self.y[trial_idx]
         
-        return torch.from_numpy(x_crop), torch.tensor(y_label)
+        # FIX: Return trial_idx too!
+        return torch.from_numpy(x_crop), torch.tensor(y_label), torch.tensor(trial_idx)

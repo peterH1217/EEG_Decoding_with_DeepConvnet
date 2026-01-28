@@ -47,4 +47,6 @@ python -m src.test_run
 
 **logs/:** Contains training logs for reproducibility.
 
-**validation_plots** Checking if pre-processing was carried out correctly. PSD plots to check High/Low-pass filtering is working and Raw EEG trace plots to observe channel-wise Z-score normalization. 
+**validation_plots** Checking if pre-processing was carried out correctly. PSD plots to check High/Low-pass filtering is working and Raw EEG trace plots to observe channel-wise Z-score normalization.
+
+**/grand_average:** Grand average output for both datasets.

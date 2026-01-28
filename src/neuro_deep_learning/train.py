@@ -11,23 +11,23 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from neuro_deep_learning import fetch, dataset, visualization, cnn
 
-# ---------------- Logging configuration ----------------
+# Logging configuration
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# ---------------- Project paths ----------------
+# Project paths
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = ROOT / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-# ---------------- Hyperparameters ----------------
+# Hyperparameters
 TRAIN_SIZE = 0.8
-N_EPOCHS = 300      # You can reduce this to 150-200 for faster Schirrmeister runs if needed
-STRIDE = 50        # Keep this small for high accuracy
+N_EPOCHS = 200      # We can reduce this to 150-200 for faster Schirrmeister runs if needed
+STRIDE = 500        # Keep this small for high accuracy
 
-PATIENCE = 100  # Was 50
+PATIENCE = 50 
 CROP_SIZE = 500
-BATCH_SIZE = 16  # Was 64
+BATCH_SIZE = 64  
 
 
 def run_epoch(model, loader, criterion, optimizer, device, is_train=True):
@@ -135,8 +135,10 @@ def process_dataset(dataset_name: str) -> None:
     # If BNCI2014_001, we know there are 9 subjects.
     if dataset_name == 'BNCI2014_001':
          subject_ids = [2] #list(range(1, 10)) if for all subjects
+    elif dataset_name == 'Schirrmeister2017':
+         subject_ids = [10]
     else:
-         # For Schirrmeister or Physionet, fetch list dynamically
+         # For Physionet, fetch list dynamically
          subject_ids = fetch.get_participants(dataset_name)
     
     grand_accuracies = []
@@ -181,7 +183,7 @@ def process_dataset(dataset_name: str) -> None:
 
         criterion = nn.CrossEntropyLoss()
         # Find this line inside process_dataset
-        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-4) # Was 0.001
+        optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
         early_stopper = EarlyStopping(patience=PATIENCE)
 
         # D. TRAINING LOOP

@@ -46,10 +46,6 @@ def get_dataset_class_mapping(dataset_name: str) -> dict[int, str]:
 
 
 def get_dataset(subject_id: int, dataset_name: str):
-    """
-    Fetch data for a specific subject. 
-    Matches original data_loader.py signature: (subject_id, dataset_name)
-    """
     logger.info(f"Step 1: Loading Subject {subject_id} from {dataset_name}...")
     
     # 1. Select Dataset
@@ -62,28 +58,47 @@ def get_dataset(subject_id: int, dataset_name: str):
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
-    # 2. Extract specific subject data
+    # 2. Extract Data
     ds.subject_list = [subject_id]
     data = ds.get_data()
-    
-    # Handle MOABB dictionary structure
     subject_data = data[subject_id]
-    session_names = list(subject_data.keys())
-    train_session_name = session_names[0]
-    
-    # Use test session if available, else duplicate train (for demo)
-    test_session_name = session_names[1] if len(session_names) > 1 else session_names[0]
-    
-    # Get all Train Runs
-    runs_train = subject_data[train_session_name]
-    # Collect all 'Raw' objects from the dictionary values
-    raws_train_list = [runs_train[run_name] for run_name in runs_train.keys()]
-    # Stitch them together
-    raw_train = concatenate_raws(raws_train_list)
-    
-    # 2. Get all Test Runs
-    runs_test = subject_data[test_session_name]
-    raws_test_list = [runs_test[run_name] for run_name in runs_test.keys()]
-    raw_test = concatenate_raws(raws_test_list)
+    session_name = list(subject_data.keys())[0] # Usually 'session_0'
+    runs = subject_data[session_name]
+
+    # --- FIX FOR LEAKAGE ---
+    if dataset_name == 'Schirrmeister2017':
+        # MOABB usually labels them as 'train' and 'test' or '0' and '1'
+        # Let's verify keys to be safe, but typically:
+        if 'train' in runs and 'test' in runs:
+            raw_train = runs['train']
+            raw_test = runs['test']
+        else:
+            # Fallback: If keys are just numbers (e.g., '0', '1'), assume 0=Train, 1=Test
+            # (Schirrmeister MOABB typically has 2 run entries: Train and Test)
+            run_keys = sorted(list(runs.keys()))
+            logger.info(f"Splitting runs: {run_keys}")
+            
+            # Simple split: First part Train, last part Test
+            # Note: Verify if your specific download has 2 runs or 13. 
+            # If 2 runs: 0 is train, 1 is test.
+            raw_train = runs[run_keys[0]]
+            raw_test = runs[run_keys[1]]
+            
+    else:
+        # Keep your old logic for BNCI (which has 2 sessions)
+        session_names = list(subject_data.keys())
+        if len(session_names) > 1:
+            # True 2-session dataset (like BNCI)
+            runs_train = subject_data[session_names[0]]
+            runs_test  = subject_data[session_names[1]]
+            
+            raw_train = concatenate_raws([runs_train[r] for r in runs_train])
+            raw_test  = concatenate_raws([runs_test[r] for r in runs_test])
+        else:
+            # Fallback for other 1-session datasets (like Physionet)
+            # You should split by run index manually here too
+            runs_all = [runs[r] for r in runs]
+            raw_train = concatenate_raws(runs_all[:-1]) # Use all except last run
+            raw_test = runs_all[-1] # Use last run for test
 
     return raw_train, raw_test

@@ -100,17 +100,17 @@ pytest
 ```
 
 **Pipeline Stages**
-Data Import (fetch.py): Downloads datasets automatically using MOABB.
+**Data Import (fetch.py):** Downloads datasets automatically using MOABB.
 
-Preprocessing (dataset.py): * Resampling to 250Hz.
+**Preprocessing (dataset.py):** Resampling to 250Hz.
 
-Bandpass filtering (4Hz - Inf).
+**Bandpass filtering (4Hz - Inf).**
 
-Z-score normalization.
+**Z-score normalization**
 
-Modeling (cnn.py): 4-layer DeepConvNet with MaxPolling and ELU activation.
+**Modeling (cnn.py):** 4-layer DeepConvNet with MaxPolling and ELU activation.
 
-Analysis (grand_average_*.py): Aggregates subject accuracies and generates confusion matrices.
+**Analysis (grand_average_*.py):** Aggregates subject accuracies and generates confusion matrices.
 
 **References**
 Schirrmeister, R. T., et al. (2017). Deep learning with convolutional neural networks for EEG decoding and visualization. Human Brain Mapping.

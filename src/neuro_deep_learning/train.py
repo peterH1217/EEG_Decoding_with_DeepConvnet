@@ -136,7 +136,7 @@ def process_dataset(dataset_name: str) -> None:
     if dataset_name == 'BNCI2014_001':
          subject_ids = [2] #list(range(1, 10)) if for all subjects
     elif dataset_name == 'Schirrmeister2017':
-         subject_ids = [10]
+         subject_ids = [10] #list(range(1, 15)) since this dataset has 14 subjects
     else:
          # For Physionet, fetch list dynamically
          subject_ids = fetch.get_participants(dataset_name)

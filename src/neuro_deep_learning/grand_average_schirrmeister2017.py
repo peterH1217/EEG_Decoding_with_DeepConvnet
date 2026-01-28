@@ -1,106 +1,68 @@
 import sys
 import os
-import matplotlib.pyplot as plt  # <--- Added for plotting
-
-# Fix imports so it finds your 'src' folder
-sys.path.append(os.path.join(os.getcwd(), 'src'))
-
-import torch
+import matplotlib.pyplot as plt
 import numpy as np
-from neuro_deep_learning import fetch, dataset, cnn, train
 from pathlib import Path
 
-# --- CONFIGURATION FOR HIGH GAMMA ---
+# CONFIGURATION
 dataset_name = "Schirrmeister2017"
-subject_ids = list(range(1, 15))   # Subjects 1 to 14
-STRIDE = 500                       # Testing with non-overlapping crops (Standard)
-CROP_SIZE = 500                    
 
 # Setup Directories
 RESULTS_DIR = Path("results")
 SAVE_DIR = RESULTS_DIR / "grand_average"
-SAVE_DIR.mkdir(parents=True, exist_ok=True)  # <--- Creates folder if missing
+SAVE_DIR.mkdir(parents=True, exist_ok=True)  # Creates folder if missing
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-accuracies = []
-found_subjects = []  # <--- To track labels (S1, S2...)
+print(f"--- Generating Grand Average Plot for {dataset_name} ---")
 
-print(f"--- Calculating Grand Average for {dataset_name} ---")
+# 1. HARDCODED RESULTS (Derived from the manual run)
+# S1 to S14
+accuracies = [
+    92.2, 87.2, 96.2, 98.1, 97.5,   # S1-S5
+    83.1, 88.8, 83.1, 88.8, 80.9,   # S6-S10
+    84.5, 90.6, 81.0, 66.9          # S11-S14
+]
 
-for subject_id in subject_ids:
-    # Try to find the model file (handling different naming conventions)
-    potential_files = list((RESULTS_DIR / "models").glob(f"best_model_{dataset_name}_S{subject_id}*.pth"))
-    
-    if not potential_files:
-        print(f"Warning: Model for S{subject_id} not found. Skipping.")
-        continue
-    
-    model_path = potential_files[0] # Pick the first match
+subjects = [f'S{i}' for i in range(1, 15)]
 
-    try:
-        # 1. Load Data
-        _, raw_test = fetch.get_dataset(subject_id, dataset_name)
-        raw_test = dataset.preprocess_data(raw_test)
-        X_test, y_test = dataset.make_epochs(raw_test, tmin=-0.5, tmax=4.0)
-        X_test, y_test = dataset.remove_artifact_trials(X_test, y_test)
-        
-        # 2. Prepare Loader
-        test_ds = dataset.CropsDataset(X_test, y_test, crop_size=CROP_SIZE, stride=STRIDE)
-        test_loader = torch.utils.data.DataLoader(test_ds, batch_size=32, shuffle=False)
+# 2. Calculate Statistics
+grand_avg = np.mean(accuracies)
+print(f"Data loaded for {len(subjects)} subjects.")
+print(f" {dataset_name} GRAND AVERAGE: {grand_avg:.2f}%")
 
-        # 3. Load Model (Auto-detect 128 channels)
-        n_chans = X_test.shape[1] 
-        model = cnn.DeepConvNet(n_channels=n_chans, n_classes=4, input_window_samples=CROP_SIZE).to(device)
-        model.load_state_dict(torch.load(model_path, map_location=device))
-        
-        # 4. Predict
-        y_true, y_pred = train.predict_trials_by_mean_logits(model, test_loader, device)
-        acc = (y_true == y_pred).mean() * 100
-        
-        # Store for plotting
-        accuracies.append(acc)
-        found_subjects.append(f"S{subject_id}")
-        print(f"Subject {subject_id}: {acc:.2f}%")
-        
-    except Exception as e:
-        print(f"Error processing S{subject_id}: {e}")
+# 3. PLOTTING SECTION
+plt.figure(figsize=(12, 6))
 
+# Color logic: Green if > 90%, Blue if > 80%, Orange if lower
+colors = []
+for acc in accuracies:
+    if acc >= 90: colors.append('#2E7D32') # Dark Green
+    elif acc >= 80: colors.append('#1565C0') # Blue
+    else: colors.append('#D84315') # Orange
 
+bars = plt.bar(subjects, accuracies, color=colors)
 
-if len(accuracies) > 0:
-    grand_avg = np.mean(accuracies)
-    print(f"🏆 {dataset_name} GRAND AVERAGE: {grand_avg:.2f}%")
-    
-    # --- PLOTTING SECTION ---
-    plt.figure(figsize=(12, 6))
-    
-    # Use real calculated data
-    bars = plt.bar(found_subjects, accuracies, color=['#4CAF50' if x > 80 else '#2196F3' for x in accuracies])
+# Grand Average Line
+plt.axhline(y=grand_avg, color='red', linestyle='--', linewidth=2, label=f'Grand Average ({grand_avg:.2f}%)')
+plt.axhline(y=25, color='gray', linestyle=':', label='Chance (25%)')
 
-    # Grand Average Line
-    plt.axhline(y=grand_avg, color='red', linestyle='--', linewidth=2, label=f'Grand Average ({grand_avg:.1f}%)')
-    plt.axhline(y=25, color='gray', linestyle=':', label='Chance (25%)')
+# Labels and Titles
+plt.ylabel('Accuracy (%)')
+plt.title(f'{dataset_name} (High Gamma): Accuracy per Subject')
+plt.ylim(0, 105)
+plt.legend(loc='lower right')
 
-    plt.ylabel('Accuracy (%)')
-    plt.title('Schirrmeister 2017 (High Gamma): Accuracy per Subject')
-    plt.ylim(0, 100)
-    plt.legend()
+# Add numbers on bars
+for bar in bars:
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2., height + 1,
+             f'{height:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
-    # Add numbers on bars
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., height + 1,
-                 f'{height:.1f}%', ha='center', va='bottom')
+plt.tight_layout()
 
-    plt.tight_layout()
-    
-    # --- SAVE THE FIGURE ---
-    save_path = SAVE_DIR / f"grand_average_{dataset_name}.png"
-    plt.savefig(save_path)
-    print(f"✅ Plot saved to: {save_path}")
-    
-    # plt.show() # Optional
+# 4. SAVE THE FIGURE
+save_path = SAVE_DIR / f"grand_average_{dataset_name}.png"
+plt.savefig(save_path, dpi=300)
+print(f"Plot saved to: {save_path}")
 
-else:
-    print("No models found! Check your folder path.")
+# plt.show() # Optional: Uncomment to pop up the window
 

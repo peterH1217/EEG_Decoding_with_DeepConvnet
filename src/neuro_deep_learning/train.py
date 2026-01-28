@@ -129,7 +129,7 @@ class EarlyStopping:
 
 
 def process_dataset(dataset_name: str) -> None:
-    print(f"--- PROCESSING DATASET: {dataset_name} ---")
+    logger.info(f"--- PROCESSING DATASET: {dataset_name} ---")
 
     # 1. DETERMINE SUBJECTS
     # If BNCI2014_001, we know there are 9 subjects.
@@ -146,7 +146,7 @@ def process_dataset(dataset_name: str) -> None:
     # 2. MAIN LOOP: ONE SUBJECT AT A TIME (Replication Standard)
     for subject_id in subject_ids:
        
-        print(f"  TRAINING SUBJECT {subject_id} of {len(subject_ids)}")
+        logger.info(f"  TRAINING SUBJECT {subject_id} of {len(subject_ids)}")
       
 
         # A. LOAD DATA (Specific to this subject)
@@ -160,7 +160,7 @@ def process_dataset(dataset_name: str) -> None:
         X_train, y_train = dataset.remove_artifact_trials(X_train, y_train, threshold_std=20)
         X_test, y_test   = dataset.remove_artifact_trials(X_test, y_test, threshold_std=20)
         
-        print(f"Subject {subject_id}: {len(X_train)} train trials | {len(X_test)} test trials")
+        logger.info(f"Subject {subject_id}: {len(X_train)} train trials | {len(X_test)} test trials")
 
         # B. SPLIT TRAIN/VAL
         split_idx = int(len(X_train) * TRAIN_SIZE)
@@ -211,12 +211,12 @@ def process_dataset(dataset_name: str) -> None:
             # Early Stopping
             early_stopper(val_acc)
             if early_stopper.early_stop:
-                print(f"  Early stopping at epoch {epoch} (Best Val: {best_val_acc:.1f}%)")
+                logger.info(f"  Early stopping at epoch {epoch} (Best Val: {best_val_acc:.1f}%)")
                 break
             
             # Print status every 10 epochs
             if epoch % 10 == 0:
-                print(f"  Ep {epoch}: Val Acc {val_acc:.1f}%")
+                logger.info(f"  Ep {epoch}: Val Acc {val_acc:.1f}%")
 
         # E. FINAL TEST EVALUATION
         # Load the best weights for THIS subject
@@ -225,7 +225,7 @@ def process_dataset(dataset_name: str) -> None:
         y_true_test, y_pred_test = predict_trials_by_mean_logits(model, test_loader, device)
         final_test_acc = (y_true_test == y_pred_test).mean() * 100
         
-        print(f"✅ FINAL RESULT - Subject {subject_id}: {final_test_acc:.2f}%")
+        logger.info(f"FINAL RESULT - Subject {subject_id}: {final_test_acc:.2f}%")
         grand_accuracies.append(final_test_acc)
         
         # Optional: Save a confusion matrix for this subject
@@ -240,9 +240,9 @@ def process_dataset(dataset_name: str) -> None:
 
     # 3. GRAND AVERAGE REPORT
     avg_acc = np.mean(grand_accuracies)
-    print(f"REPLICATION COMPLETE: {dataset_name}")
-    print(f"Grand Average Accuracy: {avg_acc:.2f}%")
-    print(f"Individual Scores: {grand_accuracies}")
+    logger.info(f"REPLICATION COMPLETE: {dataset_name}")
+    logger.info(f"Grand Average Accuracy: {avg_acc:.2f}%")
+    logger.info(f"Individual Scores: {grand_accuracies}")
 
 
 def main() -> None:

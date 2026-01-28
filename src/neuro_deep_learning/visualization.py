@@ -142,9 +142,9 @@ def plot_test_confusion_matrix(y_true, y_pred, class_mapping: dict[int, str], ti
     if save_path is not None:
         try:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Confusion matrix saved to: {save_path}")
+            logger.info(f"Confusion matrix saved to: {save_path}")
         except Exception as e:
-            print(f"Failed to save figure: {e}")
+            logger.info(f"Failed to save figure: {e}")
 
     plt.show()
     plt.close()

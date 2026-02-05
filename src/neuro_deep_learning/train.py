@@ -23,7 +23,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
 # Hyperparameters
 TRAIN_SIZE = 0.8
 N_EPOCHS = 200      # We can reduce this to 150-200 for faster Schirrmeister runs if needed
-STRIDE = 500        # Keep this small for high accuracy
+STRIDE = 100        # Keep this small for high accuracy
 
 PATIENCE = 50 
 CROP_SIZE = 500

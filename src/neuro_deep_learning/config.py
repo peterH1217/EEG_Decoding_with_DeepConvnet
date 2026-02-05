@@ -38,4 +38,4 @@ LOW_CUTOFF = 4.0     # Hz
 
 # The paper analyzes up to 125 Hz for the High Gamma Dataset.
 # We set this to None so we don't kill the Gamma band features.
-HIGH_CUTOFF = None
+HIGH_CUTOFF = 38.0 #Hz

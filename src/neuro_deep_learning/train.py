@@ -134,7 +134,7 @@ def process_dataset(dataset_name: str) -> None:
     # 1. DETERMINE SUBJECTS
     # If BNCI2014_001, we know there are 9 subjects.
     if dataset_name == 'BNCI2014_001':
-         subject_ids = [2] #list(range(1, 10)) if for all subjects
+         subject_ids = [9] #list(range(1, 10)) if for all subjects
     elif dataset_name == 'Schirrmeister2017':
          subject_ids = [10] #list(range(1, 15)) since this dataset has 14 subjects
     else:
